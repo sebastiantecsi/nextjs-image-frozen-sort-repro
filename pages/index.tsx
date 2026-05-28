@@ -1,5 +1,8 @@
 import Image from 'next/image'
+import Slider from 'react-slick'
 import { GetStaticProps } from 'next'
+import 'slick-carousel/slick/slick.css'
+import 'slick-carousel/slick/slick-theme.css'
 
 /**
  * Minimal reproduction for:
@@ -23,42 +26,82 @@ import { GetStaticProps } from 'next'
 
 type Props = {
   timestamp: string
+  experts: { id: number; name: string; role: string }[]
 }
 
 export const getStaticProps: GetStaticProps<Props> = async () => {
   return {
     props: {
       timestamp: new Date().toISOString(),
+      experts: [
+        { id: 1, name: 'Alice Johnson', role: 'Partner' },
+        { id: 2, name: 'Bob Smith', role: 'Senior Associate' },
+        { id: 3, name: 'Carol Williams', role: 'Associate' },
+        { id: 4, name: 'David Brown', role: 'Counsel' },
+        { id: 5, name: 'Eve Davis', role: 'Partner' },
+      ],
     },
     revalidate: 10,
   }
 }
 
-export default function Home({ timestamp }: Props) {
+// Simulates AuthorSpeakerCard atom with an <Image> inside
+function ExpertCard({ expert }: { expert: Props['experts'][number] }) {
   return (
-    <main style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+    <div style={{ padding: '0.5rem' }}>
+      <div style={{ position: 'relative', width: 200, height: 200, borderRadius: '50%', overflow: 'hidden' }}>
+        <Image
+          src={`https://picsum.photos/seed/${expert.id}/400/400`}
+          alt={expert.name}
+          fill
+          sizes="200px"
+          style={{ objectFit: 'cover' }}
+        />
+      </div>
+      <h3 style={{ margin: '0.5rem 0 0' }}>{expert.name}</h3>
+      <p style={{ margin: 0, color: '#666' }}>{expert.role}</p>
+    </div>
+  )
+}
+
+// Simulates SharedSlider with react-slick (same as real implementation)
+const SliderR19 = Slider as unknown as React.ComponentType<any>
+
+const SLIDER_SETTINGS = {
+  dots: false,
+  infinite: false,
+  speed: 500,
+  slidesToShow: 4,
+  slidesToScroll: 1,
+  responsive: [
+    { breakpoint: 1280, settings: { slidesToShow: 3 } },
+    { breakpoint: 1024, settings: { slidesToShow: 2 } },
+    { breakpoint: 768, settings: { slidesToShow: 1 } },
+  ],
+}
+
+export default function Home({ timestamp, experts }: Props) {
+  return (
+    <main style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: 1200, margin: '0 auto' }}>
       <h1>Next.js Image Frozen Config Sort Reproduction</h1>
       <p>Generated at: {timestamp}</p>
       <p>
-        This page renders multiple <code>&lt;Image&gt;</code> components during SSR
-        via <code>getStaticProps</code> + ISR. On Vercel, the image config arrays
-        (<code>deviceSizes</code>, <code>qualities</code>) are deep-frozen, causing
-        the in-place <code>.sort()</code> in <code>get-img-props.js</code> to throw.
+        This page renders <code>&lt;Image&gt;</code> components inside a <code>react-slick</code> slider
+        during SSR (via <code>getStaticProps</code> + ISR), matching the real-world scenario.
+      </p>
+      <p>
+        On Vercel, the image config arrays (<code>deviceSizes</code>, <code>qualities</code>) are
+        deep-frozen by <code>loadManifest() → deepFreeze()</code>, causing the in-place
+        <code>.sort()</code> in <code>get-img-props.js</code> to throw.
       </p>
 
-      <h2>Images (rendered during SSR):</h2>
+      <h2>Experts Section (slider with images, rendered during SSR):</h2>
 
-      {/* Multiple images to trigger the error multiple times */}
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} style={{ position: 'relative', width: 400, height: 300, marginBottom: '1rem' }}>
-          <Image
-            src={`https://picsum.photos/seed/${i}/800/600`}
-            alt={`Test image ${i}`}
-            fill
-            sizes="(max-width: 768px) 100vw, 400px"
-          />
-        </div>
-      ))}
+      <SliderR19 {...SLIDER_SETTINGS}>
+        {experts.map((expert) => (
+          <ExpertCard key={expert.id} expert={expert} />
+        ))}
+      </SliderR19>
     </main>
   )
 }
